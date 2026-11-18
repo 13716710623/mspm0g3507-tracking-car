@@ -1,0 +1,27 @@
+# CCS / 编译产物
+build/
+Debug/
+Release/
+*.obj
+*.o
+*.d
+*.out
+*.map
+*.hex
+*.bin
+*.abs
+*.lst
+
+# CCS 工作区元数据（工程自身的 .project/.cproject/.ccsproject 要提交，这里只忽略本机状态）
+.launch/
+.metadata/
+.ccsproject.bak
+.settings/org.eclipse.cdt.launch.prefs
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+*.swp
+*~

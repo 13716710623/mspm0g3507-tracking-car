@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<projectSpec>
+    <applicability>
+        <when>
+            <context
+                deviceFamily="ARM"
+                deviceId="MSPM0G3507"
+            />
+        </when>
+    </applicability>
+
+    <project
+        title="wheeltec_car_g3507"
+        name="wheeltec_car_g3507"
+        configurations="Debug"
+        toolChain="TICLANG"
+        connection="TIXDS110_Connection.xml"
+        device="MSPM0G3507"
+        ignoreDefaultDeviceSettings="true"
+        ignoreDefaultCCSSettings="true"
+        products="MSPM0-SDK;sysconfig"
+        compilerBuildOptions="
+            -I${PROJECT_ROOT}
+            -I${PROJECT_ROOT}/${ConfigName}
+            -O2
+            @device.opt
+            -I${COM_TI_MSPM0_SDK_INSTALL_DIR}/source/third_party/CMSIS/Core/Include
+            -I${COM_TI_MSPM0_SDK_INSTALL_DIR}/source
+            -mcpu=cortex-m0plus
+            -march=thumbv6m
+            -mfloat-abi=soft
+            -mthumb
+            -Wall
+        "
+        linkerBuildOptions="
+            -ldevice.cmd.genlibs
+            -L${COM_TI_MSPM0_SDK_INSTALL_DIR}/source
+            -L${PROJECT_ROOT}
+            -L${PROJECT_BUILD_DIR}/syscfg
+            -Wl,--rom_model
+            -Wl,--warn_sections
+            -L${CG_TOOL_ROOT}/lib
+            -llibc.a
+        "
+        sysConfigBuildOptions="
+            --output .
+            --product ${COM_TI_MSPM0_SDK_INSTALL_DIR}/.metadata/product.json
+            --compiler ticlang
+        "
+        sourceLookupPath="${COM_TI_MSPM0_SDK_INSTALL_DIR}/source/ti/driverlib"
+        description="WHEELTEC 小车驱动（MSPM0G3507 + TB6612 + 串口协议）">
+        <property name="buildProfile" value="release"/>
+        <property name="isHybrid" value="true"/>
+        <file path="car.syscfg" openOnCreation="true" excludeFromBuild="false" action="copy"/>
+        <file path="main.c" openOnCreation="true" excludeFromBuild="false" action="copy"/>
+        <file path="motor.c" openOnCreation="false" excludeFromBuild="false" action="copy"/>
+        <file path="motor.h" openOnCreation="false" excludeFromBuild="false" action="copy"/>
+        <file path="encoder.c" openOnCreation="false" excludeFromBuild="false" action="copy"/>
+        <file path="encoder.h" openOnCreation="false" excludeFromBuild="false" action="copy"/>
+        <file path="pid.c" openOnCreation="false" excludeFromBuild="false" action="copy"/>
+        <file path="pid.h" openOnCreation="false" excludeFromBuild="false" action="copy"/>
+        <file path="control.c" openOnCreation="false" excludeFromBuild="false" action="copy"/>
+        <file path="control.h" openOnCreation="false" excludeFromBuild="false" action="copy"/>
+        <file path="car_irq.h" openOnCreation="false" excludeFromBuild="false" action="copy"/>
+        <file path="car_config.h" openOnCreation="false" excludeFromBuild="false" action="copy"/>
+        <file path="car_time.h" openOnCreation="false" excludeFromBuild="false" action="copy"/>
+        <file path="car_uart.c" openOnCreation="false" excludeFromBuild="false" action="copy"/>
+        <file path="car_uart.h" openOnCreation="false" excludeFromBuild="false" action="copy"/>
+        <file path="line_sensor.c" openOnCreation="false" excludeFromBuild="false" action="copy"/>
+        <file path="line_sensor.h" openOnCreation="false" excludeFromBuild="false" action="copy"/>
+        <file path="line_follow.c" openOnCreation="false" excludeFromBuild="false" action="copy"/>
+        <file path="line_follow.h" openOnCreation="false" excludeFromBuild="false" action="copy"/>
+        <file path="odom.c" openOnCreation="false" excludeFromBuild="false" action="copy"/>
+        <file path="odom.h" openOnCreation="false" excludeFromBuild="false" action="copy"/>
+        <file path="button.c" openOnCreation="false" excludeFromBuild="false" action="copy"/>
+        <file path="button.h" openOnCreation="false" excludeFromBuild="false" action="copy"/>
+        <file path="mission.c" openOnCreation="false" excludeFromBuild="false" action="copy"/>
+        <file path="mission.h" openOnCreation="false" excludeFromBuild="false" action="copy"/>
+        <file path="oled.c" openOnCreation="false" excludeFromBuild="false" action="copy"/>
+        <file path="oled.h" openOnCreation="false" excludeFromBuild="false" action="copy"/>
+        <file path="oled_font.c" openOnCreation="false" excludeFromBuild="false" action="copy"/>
+        <file path="C题-任务实现说明.md" openOnCreation="false" excludeFromBuild="false" action="copy"/>
+        <file path="README.md" openOnCreation="false" excludeFromBuild="false" action="copy"/>
+    </project>
+</projectSpec>

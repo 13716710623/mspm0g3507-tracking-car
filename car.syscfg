@@ -1,0 +1,220 @@
+/**
+ * WHEELTEC/地猛星 小车主板 - MSPM0G3507
+ * 引脚依据《地猛星引脚分配2.0》和原理图，勿随意改动
+ *
+ * PA12  TIMG0_CCP0 -> TB6612 PWMA（左）
+ * PA13  TIMG0_CCP1 -> TB6612 PWMB（右）
+ * PA8   AIN1      PA9   AIN2
+ * PB18  BIN1      PA7   BIN2
+ * PB24  STBY
+ * PA14  板上 LED
+ * PA28  UART0_TX -> 底板 H4 串口    PA31  UART0_RX
+ * PB2   I2C1_SCL  -> OLED H1        PB3   I2C1_SDA
+ * PA21 编码器1 A   PA22 编码器1 B
+ * PB19 编码器2 A   PB20 编码器2 B
+ * PA17/PB8/PB9/PA24/PA2/PA0/PA1/PA23  八路灰度 CH1~CH8
+ * PA16  启动按键（内部上拉，按下接 GND）
+ *
+ * 注意：本板没有电池电压采样，不要启用 ADC 电池保护。
+ *       PA18 是 BSL 引导脚，绝对不要占用。
+ */
+
+//@cliArgs --device "MSPM0G350X" --package "LQFP-64(PM)" --part "Default"
+//@v2CliArgs --device "MSPM0G3507" --package "LQFP-64(PM)"
+
+const PWM    = scripting.addModule("/ti/driverlib/PWM", {}, false);
+const PWM1   = PWM.addInstance();
+const UART   = scripting.addModule("/ti/driverlib/UART", {}, false);
+const UART1  = UART.addInstance();
+const GPIO   = scripting.addModule("/ti/driverlib/GPIO", {}, false);
+const GPIO1  = GPIO.addInstance();
+const GPIO2  = GPIO.addInstance();
+const SYSCTL = scripting.addModule("/ti/driverlib/SYSCTL");
+
+/* ---- 电机 PWM：20 kHz，两路独立占空比 ---- */
+PWM1.$name                      = "MOTOR_PWM";
+PWM1.clockPrescale              = 1;
+PWM1.timerCount                 = 1600;
+PWM1.peripheral.$assign         = "TIMG0";
+PWM1.peripheral.ccp0Pin.$assign = "PA12";
+PWM1.peripheral.ccp1Pin.$assign = "PA13";
+PWM1.PWM_CHANNEL_0.$name        = "MOTOR_LEFT";
+PWM1.PWM_CHANNEL_0.dutyCycle    = 0;
+PWM1.PWM_CHANNEL_1.$name        = "MOTOR_RIGHT";
+PWM1.PWM_CHANNEL_1.dutyCycle    = 0;
+
+/* ---- 调试串口：115200，底板 H4（PA28=TX / PA31=RX）----
+ * 核心板自己的 TX/RX 是 PA10/PA11，与这里互斥：UART0 只能映射到一对引脚。 */
+UART1.$name                  = "CMD_UART";
+UART1.profile                = "CONFIG_PROFILE_3";
+UART1.flowControl            = "NONE";
+UART1.peripheral.$assign     = "UART0";
+UART1.targetBaudRate         = 115200;
+UART1.enableInternalLoopback = false;
+UART1.enabledInterrupts      = ["RX"];
+UART1.enableFIFO             = true;
+UART1.rxTimeoutValue         = 15;
+UART1.peripheral.txPin.$assign = "PA28";
+UART1.peripheral.rxPin.$assign = "PA31";
+
+/* ---- 方向 / 使能 / 板载 LED ---- */
+GPIO1.$name = "MOTOR";
+GPIO1.associatedPins.create(6);
+
+GPIO1.associatedPins[0].$name        = "AIN1";
+GPIO1.associatedPins[0].assignedPort = "PORTA";
+GPIO1.associatedPins[0].assignedPin  = "8";
+GPIO1.associatedPins[0].direction    = "OUTPUT";
+GPIO1.associatedPins[0].initialValue = "CLEARED";
+
+GPIO1.associatedPins[1].$name        = "AIN2";
+GPIO1.associatedPins[1].assignedPort = "PORTA";
+GPIO1.associatedPins[1].assignedPin  = "9";
+GPIO1.associatedPins[1].direction    = "OUTPUT";
+GPIO1.associatedPins[1].initialValue = "CLEARED";
+
+GPIO1.associatedPins[2].$name        = "BIN1";
+GPIO1.associatedPins[2].assignedPort = "PORTB";
+GPIO1.associatedPins[2].assignedPin  = "18";
+GPIO1.associatedPins[2].direction    = "OUTPUT";
+GPIO1.associatedPins[2].initialValue = "CLEARED";
+
+GPIO1.associatedPins[3].$name        = "BIN2";
+GPIO1.associatedPins[3].assignedPort = "PORTA";
+GPIO1.associatedPins[3].assignedPin  = "7";
+GPIO1.associatedPins[3].direction    = "OUTPUT";
+GPIO1.associatedPins[3].initialValue = "CLEARED";
+
+GPIO1.associatedPins[4].$name        = "STBY";
+GPIO1.associatedPins[4].assignedPort = "PORTB";
+GPIO1.associatedPins[4].assignedPin  = "24";
+GPIO1.associatedPins[4].direction    = "OUTPUT";
+GPIO1.associatedPins[4].initialValue = "CLEARED";
+
+GPIO1.associatedPins[5].$name        = "LED";
+GPIO1.associatedPins[5].assignedPort = "PORTA";
+GPIO1.associatedPins[5].assignedPin  = "14";
+GPIO1.associatedPins[5].direction    = "OUTPUT";
+GPIO1.associatedPins[5].initialValue = "CLEARED";
+
+/* ---- 编码器输入：A/B 都开双边沿中断（4 倍频）---- */
+GPIO2.$name = "ENCODER";
+GPIO2.associatedPins.create(4);
+
+GPIO2.associatedPins[0].$name            = "LEFT_A";
+GPIO2.associatedPins[0].assignedPort     = "PORTA";
+GPIO2.associatedPins[0].assignedPin      = "21";
+GPIO2.associatedPins[0].direction        = "INPUT";
+GPIO2.associatedPins[0].internalResistor = "PULL_UP";
+GPIO2.associatedPins[0].interruptEn      = true;
+GPIO2.associatedPins[0].polarity         = "RISE_FALL";
+
+GPIO2.associatedPins[1].$name            = "LEFT_B";
+GPIO2.associatedPins[1].assignedPort     = "PORTA";
+GPIO2.associatedPins[1].assignedPin      = "22";
+GPIO2.associatedPins[1].direction        = "INPUT";
+GPIO2.associatedPins[1].internalResistor = "PULL_UP";
+GPIO2.associatedPins[1].interruptEn      = true;
+GPIO2.associatedPins[1].polarity         = "RISE_FALL";
+
+GPIO2.associatedPins[2].$name            = "RIGHT_A";
+GPIO2.associatedPins[2].assignedPort     = "PORTB";
+GPIO2.associatedPins[2].assignedPin      = "19";
+GPIO2.associatedPins[2].direction        = "INPUT";
+GPIO2.associatedPins[2].internalResistor = "PULL_UP";
+GPIO2.associatedPins[2].interruptEn      = true;
+GPIO2.associatedPins[2].polarity         = "RISE_FALL";
+
+GPIO2.associatedPins[3].$name            = "RIGHT_B";
+GPIO2.associatedPins[3].assignedPort     = "PORTB";
+GPIO2.associatedPins[3].assignedPin      = "20";
+GPIO2.associatedPins[3].direction        = "INPUT";
+GPIO2.associatedPins[3].internalResistor = "PULL_UP";
+GPIO2.associatedPins[3].interruptEn      = true;
+GPIO2.associatedPins[3].polarity         = "RISE_FALL";
+
+/* ---- 八路红外灰度循迹：CH1~CH8 全用数字量输入 ----
+ * 接线按《地猛星引脚分配2.0》H2 排针：
+ *   CH1 PA17  CH2 PB8   CH3 PB9   CH4 PA24
+ *   CH5 PA2   CH6 PA0   CH7 PA1   CH8 PA23
+ * CH6/CH7 是 PA0/PA1（开漏焊盘），SysConfig 不允许开内部上拉，只能 NONE。 */
+const GRAY  = scripting.addModule("/ti/driverlib/GPIO", {}, false);
+const GRAY1 = GRAY.addInstance();
+GRAY1.$name = "GRAY";
+GRAY1.associatedPins.create(8);
+
+GRAY1.associatedPins[0].$name            = "CH1";
+GRAY1.associatedPins[0].assignedPort     = "PORTA";
+GRAY1.associatedPins[0].assignedPin      = "17";
+GRAY1.associatedPins[0].direction        = "INPUT";
+GRAY1.associatedPins[0].internalResistor = "PULL_UP";
+
+GRAY1.associatedPins[1].$name            = "CH2";
+GRAY1.associatedPins[1].assignedPort     = "PORTB";
+GRAY1.associatedPins[1].assignedPin      = "8";
+GRAY1.associatedPins[1].direction        = "INPUT";
+GRAY1.associatedPins[1].internalResistor = "PULL_UP";
+
+GRAY1.associatedPins[2].$name            = "CH3";
+GRAY1.associatedPins[2].assignedPort     = "PORTB";
+GRAY1.associatedPins[2].assignedPin      = "9";
+GRAY1.associatedPins[2].direction        = "INPUT";
+GRAY1.associatedPins[2].internalResistor = "PULL_UP";
+
+GRAY1.associatedPins[3].$name            = "CH4";
+GRAY1.associatedPins[3].assignedPort     = "PORTA";
+GRAY1.associatedPins[3].assignedPin      = "24";
+GRAY1.associatedPins[3].direction        = "INPUT";
+GRAY1.associatedPins[3].internalResistor = "PULL_UP";
+
+GRAY1.associatedPins[4].$name            = "CH5";
+GRAY1.associatedPins[4].assignedPort     = "PORTA";
+GRAY1.associatedPins[4].assignedPin      = "2";
+GRAY1.associatedPins[4].direction        = "INPUT";
+GRAY1.associatedPins[4].internalResistor = "PULL_UP";
+
+GRAY1.associatedPins[5].$name            = "CH6";
+GRAY1.associatedPins[5].assignedPort     = "PORTA";
+GRAY1.associatedPins[5].assignedPin      = "0";
+GRAY1.associatedPins[5].direction        = "INPUT";
+GRAY1.associatedPins[5].internalResistor = "NONE";
+
+GRAY1.associatedPins[6].$name            = "CH7";
+GRAY1.associatedPins[6].assignedPort     = "PORTA";
+GRAY1.associatedPins[6].assignedPin      = "1";
+GRAY1.associatedPins[6].direction        = "INPUT";
+GRAY1.associatedPins[6].internalResistor = "NONE";
+
+GRAY1.associatedPins[7].$name            = "CH8";
+GRAY1.associatedPins[7].assignedPort     = "PORTA";
+GRAY1.associatedPins[7].assignedPin      = "23";
+GRAY1.associatedPins[7].direction        = "INPUT";
+GRAY1.associatedPins[7].internalResistor = "PULL_UP";
+
+/* ---- 启动/功能按键：PA16，一端接 A16 一端接 GND，按下读到低 ---- */
+const KEY  = scripting.addModule("/ti/driverlib/GPIO", {}, false);
+const KEY1 = KEY.addInstance();
+KEY1.$name = "KEY";
+KEY1.associatedPins.create(1);
+KEY1.associatedPins[0].$name            = "START";
+KEY1.associatedPins[0].assignedPort     = "PORTA";
+KEY1.associatedPins[0].assignedPin      = "16";
+KEY1.associatedPins[0].direction        = "INPUT";
+KEY1.associatedPins[0].internalResistor = "PULL_UP";
+
+/* ---- OLED：I2C1，PB2=SCL / PB3=SDA，400 kHz（底板 H1 四针）---- */
+const I2C  = scripting.addModule("/ti/driverlib/I2C", {}, false);
+const I2C1 = I2C.addInstance();
+
+I2C1.$name                     = "OLED_I2C";
+I2C1.basicEnableController     = true;
+I2C1.basicControllerBusSpeed   = 400000;
+I2C1.advAnalogGlitchFilter     = "DISABLED";
+I2C1.peripheral.$assign        = "I2C1";
+I2C1.peripheral.sdaPin.$assign = "PB3";
+I2C1.peripheral.sclPin.$assign = "PB2";
+
+const Board = scripting.addModule("/ti/driverlib/Board", {}, false);
+
+SYSCTL.forceDefaultClkConfig = true;
+SYSCTL.clockTreeEn = true;
